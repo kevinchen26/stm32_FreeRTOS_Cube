@@ -29,6 +29,7 @@
 #include "task.h"
 #include "portmacro.h"
 #include "ili9320.h"
+#include "uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -307,7 +308,7 @@ static void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
-
+  HAL_UART_Receive_IT(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE); //
   /* USER CODE END USART1_Init 2 */
 
 }
@@ -479,6 +480,16 @@ void StartTask04(void *argument)
   for(;;)
   {
     osDelay(1);
+
+    if(USART_RX_STA & 0x8000)
+		{
+			uint16_t len = USART_RX_STA & 0x3fff; // Rx len
+			HAL_UART_Transmit(&huart1, "\r\n您发送的消息为: \r\n", 200, 1000);
+			HAL_UART_Transmit(&huart1, (uint8_t*)USART_RX_BUF, len, 1000);	//发送接收到的数据
+			HAL_UART_Transmit(&huart1, "\r\n", 20, 1000);
+			USART_RX_STA=0;
+		}
+
     //portTICK_TYPE_ENTER_CRITICAL();
     {
       //if (--tickDelay == 0) tickDelay = 9;

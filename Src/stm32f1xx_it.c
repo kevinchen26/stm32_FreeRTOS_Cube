@@ -25,6 +25,7 @@
 #include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -181,11 +182,21 @@ void TIM1_UP_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-
+  uint32_t timeout=0;
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
+	timeout=0;
+  while (HAL_UART_GetState(&huart1) != HAL_UART_STATE_READY)//等待就绪
+	{
+      if(++timeout>HAL_MAX_DELAY) break;
+	}
 
+	timeout=0;
+	while(HAL_UART_Receive_IT(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)//一次处理完成之后，重新开启中断并设置RxXferCount为1
+	{
+	  if(++timeout>HAL_MAX_DELAY) break;	
+	}
   /* USER CODE END USART1_IRQn 1 */
 }
 
