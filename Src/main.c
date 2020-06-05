@@ -47,6 +47,8 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
 
+PCD_HandleTypeDef hpcd_USB_FS;
+
 osThreadId_t defaultTaskHandle;
 osThreadId_t myTask02_lowHandle;
 osThreadId_t myTask03_highHandle;
@@ -61,6 +63,7 @@ osMessageQueueId_t myQueue02Handle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_USB_PCD_Init(void);
 void StartDefaultTask(void *argument);
 void StartTask02(void *argument);
 void StartTask03(void *argument);
@@ -126,11 +129,22 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_USB_PCD_Init();
   /* USER CODE BEGIN 2 */
   printf("Printf test.");
 
   ili9320_Initializtion();
-	ili9320_Clear(Blue);
+  // LED1_GPIO_Port->BRR = LED1_Pin;     // Clear
+  // for (uint16_t i = 0; i < 5000; i++) ;
+  // LED1_GPIO_Port->BSRR = LED1_Pin;    // set
+  // for (uint16_t i = 0; i < 5000; i++) ;
+  // LED1_GPIO_Port->BRR = LED1_Pin;     // Clear
+	ili9320_Clear(Blue);        // ~ 50 ms
+  // LED1_GPIO_Port->BSRR = LED1_Pin;    // set
+  // for (uint16_t i = 0; i < 5000; i++) ;
+  // LED1_GPIO_Port->BRR = LED1_Pin;     // Clear
+  // for (uint16_t i = 0; i < 5000; i++) ;
+  // LED1_GPIO_Port->BSRR = LED1_Pin;    // set
 
 	ili9320_ShowString_16x24(10, 10, 320, 240, "ili9320 LCD DISPLAY 16x24.");
 	ili9320_ShowString_8x16(10, 80, 320, 240, "ili9320 LCD DISPLAY 8 x 16.");
@@ -229,13 +243,17 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -244,12 +262,18 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -289,6 +313,37 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USB Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USB_PCD_Init(void)
+{
+
+  /* USER CODE BEGIN USB_Init 0 */
+
+  /* USER CODE END USB_Init 0 */
+
+  /* USER CODE BEGIN USB_Init 1 */
+
+  /* USER CODE END USB_Init 1 */
+  hpcd_USB_FS.Instance = USB;
+  hpcd_USB_FS.Init.dev_endpoints = 8;
+  hpcd_USB_FS.Init.speed = PCD_SPEED_FULL;
+  hpcd_USB_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_FS.Init.lpm_enable = DISABLE;
+  hpcd_USB_FS.Init.battery_charging_enable = DISABLE;
+  if (HAL_PCD_Init(&hpcd_USB_FS) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USB_Init 2 */
+
+  /* USER CODE END USB_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -298,6 +353,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
@@ -422,7 +478,7 @@ void StartTask04(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    //osDelay(1);
+    osDelay(1);
     //portTICK_TYPE_ENTER_CRITICAL();
     {
       //if (--tickDelay == 0) tickDelay = 9;
@@ -443,25 +499,25 @@ void StartTask04(void *argument)
       //USART1_printf(loop);
       //USART1_printf("\r\n");
 
-      //ili9320_ShowString_8x16(100, 124, 320, 240, loop);
-      ili9320_PutChar(140, 124, loop[5], Red, Blue);
-      if (i % 10 == 0)
-      {
-        ili9320_PutChar(132, 124, loop[4], Red, Blue);
-        if (i % 100 == 0)
-        {
-          ili9320_PutChar(124, 124, loop[3], Red, Blue);
-          ili9320_PutChar(116, 124, loop[2], Red, Blue);
-        }
-        if (i % 1000 == 0)
-        {
-          ili9320_PutChar(108, 124, loop[1], Red, Blue);
-        }
-        if (i % 10000 == 0)
-        {
-          ili9320_PutChar(100, 124, loop[0], Red, Blue);
-        }
-      }
+      ili9320_ShowString_8x16(100, 124, 320, 240, loop);
+      // ili9320_PutChar(140, 124, loop[5], Red, Blue);
+      // if (i % 10 == 0)
+      // {
+      //   ili9320_PutChar(132, 124, loop[4], Red, Blue);
+      //   if (i % 100 == 0)
+      //   {
+      //     ili9320_PutChar(124, 124, loop[3], Red, Blue);
+      //     ili9320_PutChar(116, 124, loop[2], Red, Blue);
+      //   }
+      //   if (i % 1000 == 0)
+      //   {
+      //     ili9320_PutChar(108, 124, loop[1], Red, Blue);
+      //   }
+      //   if (i % 10000 == 0)
+      //   {
+      //     ili9320_PutChar(100, 124, loop[0], Red, Blue);
+      //   }
+      // }
     }
 
     if (i % 100 == 0)
