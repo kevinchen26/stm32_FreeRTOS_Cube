@@ -202,7 +202,13 @@ $(BUILD_DIR):
 #######################################
 clean:
 	-rm -fR $(BUILD_DIR)
-  
+
+#######################################
+# update
+#######################################
+update:
+	openocd -f /usr/local/share/openocd/scripts/interface/jlink.cfg  -f /usr/local/share/openocd/scripts/target/stm32f1x.cfg -c init -c halt -c "flash write_image erase $(BUILD_DIR)/$(TARGET).hex" -c reset -c shutdown
+
 #######################################
 # dependencies
 #######################################
